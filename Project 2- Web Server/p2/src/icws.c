@@ -20,7 +20,7 @@ struct survival_bag{
 	int connFd;
 	char* path;
 };
-void respond_helloworld(int connFd,char *filePath,char *uri) {
+void respond_get(int connFd,char *filePath,char *uri) {
     char buf[MAXBUF];
 	struct stat sb;
 	printf("uri (%s)\n",uri);
@@ -64,6 +64,55 @@ void respond_helloworld(int connFd,char *filePath,char *uri) {
 
 	close(inputFd);
 }
+
+
+
+void respond_head(int connFd,char *filePath,char *uri) {
+    char buf[MAXBUF];
+	struct stat sb;
+	printf("uri (%s)\n",uri);
+    char tmpUri[MAXBUF];
+	strcpy(tmpUri,uri);
+    char *extension; strtok(tmpUri,".");
+	extension = strtok(NULL," ");
+	printf("extension (%s)\n",extension);	
+	char mimeType[MAXBUF];
+	if(strcmp(extension,"html")==0){
+		strcpy(	mimeType , "text/html");
+	}
+	else if(strcmp(extension,"jpg")==0){
+		strcpy(mimeType,"image/jpeg");
+	}
+	printf("mimeType (%s)\n",mimeType);
+	char newBuf[MAXBUF];
+	sprintf(newBuf,"%s%s",filePath,uri);
+	printf("path (%s)\n",newBuf);
+    int inputFd = open(newBuf,O_RDONLY);
+    fstat(inputFd, &sb);
+    size_t sizeOfFile = sb.st_size;
+	printf("%lu\n",sizeOfFile);
+    sprintf(buf, 
+            "HTTP/1.1 200 OK\r\n"
+            "Server: Tiny\r\n"
+            "Connection: close\r\n"
+            "Content-length: %lu\r\n"
+            "Content-type: %s\r\n\r\n", sizeOfFile,mimeType);
+	char content[MAXBUF];
+    write_all(connFd, buf, strlen(buf));
+	ssize_t numRead;
+	printf("buf (%s)\n",buf);
+    // while (read_line(inputFd, content, MAXBUF) > 0) {
+    //     write_all(connFd,content,MAXBUF);
+    //     // if (strcmp(buf, "\r\n") == 0) break;    
+    // }
+    // while((numRead = read(inputFd,content,MAXBUF))>0){	
+    // 	write_all(connFd,content,MAXBUF);
+    //  }
+
+	close(inputFd);
+}
+
+
 
 void serve_http(int connFd,char *path) {
     char buf[MAXBUF];
@@ -125,7 +174,7 @@ void serve_http(int connFd,char *path) {
     if (strcasecmp(method, "GET") == 0 &&
             uri[0] == '/') {
         printf("LOG: Sending hello world\n");
-        respond_helloworld(connFd,path,uri);
+        respond_get(connFd,path,uri);
     }
     else {
         printf("LOG: Unknown request\n");
