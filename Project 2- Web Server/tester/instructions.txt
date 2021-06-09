@@ -1,0 +1,10 @@
+To compile, use
+$ make
+
+To run the program, use
+./micro 222 ./sample-www/
+
+then open in chrome either
+http://192.168.56.1:222/index.html
+or
+http://localhost:222/index.html
