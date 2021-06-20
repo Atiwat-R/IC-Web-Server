@@ -12,7 +12,7 @@
 #include "parse.h"
 
 /* Rather arbitrary. In real life, be careful with buffer overflow */
-#define MAXBUF 1024  
+#define MAXBUF 8192  
 
 typedef struct sockaddr SA;
 struct survival_bag{
@@ -26,16 +26,37 @@ void respond_get(int connFd,char *filePath,char *uri) {
 	printf("uri (%s)\n",uri);
     char tmpUri[MAXBUF];
 	strcpy(tmpUri,uri);
-    char *extension; strtok(tmpUri,".");
-	extension = strtok(NULL," ");
-	printf("extension (%s)\n",extension);	
+
+    // TODO: Handle extension/ what is theres no ext strrchar
+    char *extension = strchr(tmpUri, '.');
+    // check if ext is null
+
+	printf("extension = (%s)\n",extension);	
 	char mimeType[MAXBUF];
-	if(strcmp(extension,"html")==0){
+	if(strcmp(extension,"html")==0 || strcmp(extension,"htm")==0){ // ori
 		strcpy(	mimeType , "text/html");
 	}
-	else if(strcmp(extension,"jpg")==0){
+    else if(strcmp(extension,"css")==0){
+		strcpy(	mimeType , "text/css");
+	}
+	else if(strcmp(extension,"txt")==0){ // plain
+		strcpy(	mimeType , "text/plain");
+	}
+    else if(strcmp(extension,"js")==0){ // javascipt
+		strcpy(	mimeType , "text/javascript");
+	}
+	else if(strcmp(extension,"jpg")==0 || strcmp(extension,"jpeg")==0){ // ori
 		strcpy(mimeType,"image/jpeg");
 	}
+    else if(strcmp(extension,"png")==0){
+		strcpy(	mimeType , "image/png");
+	}
+    else if(strcmp(extension,"gif")==0){
+		strcpy(	mimeType , "image/gif");
+	}
+    // support more ext
+
+
 	printf("mimeType (%s)\n",mimeType);
 	char newBuf[MAXBUF];
 	sprintf(newBuf,"%s%s",filePath,uri);
@@ -56,7 +77,7 @@ void respond_get(int connFd,char *filePath,char *uri) {
 	printf("buf (%s)\n",buf);
     // while (read_line(inputFd, content, MAXBUF) > 0) {
     //     write_all(connFd,content,MAXBUF);
-    //     // if (strcmp(buf, "\r\n") == 0) break;    
+    //     if (strcmp(buf, "\r\n") == 0) break;    
     // }
     while((numRead = read(inputFd,content,MAXBUF))>0){	
     	write_all(connFd,content,MAXBUF);
@@ -116,6 +137,10 @@ void respond_head(int connFd,char *filePath,char *uri) {
 
 void serve_http(int connFd,char *path) {
     char buf[MAXBUF];
+
+
+    // this read the header
+    //
 	printf("path (%s)\n",path);	
     if (!read_line(connFd, buf, MAXBUF)) 
         return ;  /* Quit if we can't read the first line */
@@ -129,31 +154,102 @@ void serve_http(int connFd,char *path) {
     char method[MAXBUF], uri[MAXBUF], httpVer[MAXBUF];
     sscanf(buf, "%s %s %s", method, uri, httpVer);
 
-    puts("\n-------------------------------------------------------------\n");
-    printf("(%s)\n", method);
-    printf("(%s)\n", uri);
-    printf("(%s)\n", httpVer);
-    puts("\n-------------------------------------------------------------\n");
+    // puts("\n-------------------------------------------------------------\n");
+    // printf("(%s)\n", method);
+    // printf("(%s)\n", uri);
+    // printf("(%s)\n", httpVer);
+    // puts("\n-------------------------------------------------------------\n");
+
+    int readRet;
+    int totalReqSize = 0;
+    // Reads the reast of the header into buf
+	while((readRet = read_line(connFd,buf,MAXBUF)) > 0) {
+
+        totalReqSize = totalReqSize + readRet;
+        if (totalReqSize > MAXBUF) { // Check if request size is too big
+            printf("\n!!! Request too big !!!\n");
+            exit(1);
+        }
+        printf("++LOG in loop: %s\n", buf);
+        if (strcmp(buf, "\r\n") == 0) break;
+
+    }
+
+            
 
 
 
 
-    /* Pasing using starter code's parser */
+
+
+
+
+
+
+    // //////////////////////////////////////////// aj parser 
+
+    // /* Pasing using starter code's parser */
 
     // printf("\nGAGXYXGYAXGAXXGA %s XGYAXGYXGAGXYAXGYX\n", path);
 
-    // int fd_in = open(path, O_RDONLY); // open request as specified by the given input path
+    // // int fd_in = open(path, O_RDONLY); // open request as specified by the given input path
     // int index;
 
-    // if (fd_in < 0) { // In case of failed file opening
-    //     printf("Failed to open the file\n");
-    //     return 0;
+    // // if (fd_in < 0) { // In case of failed file opening
+    // //     printf("Failed to open the file\n");
+    // //     return 0;
+    // // }
+
+    // int readRet;
+    // int totalReqSize = 0;
+
+    // // Accumulate size from read and compare it to MAXBUF, if over change size of buf as well
+    // readRet = read(connFd,buf,MAXBUF);
+
+
+	// // while((readRet = read_line(connFd,buf,MAXBUF))>0){
+
+    // //     // Check of request size is too big
+    // //     totalReqSize = totalReqSize + readRet;
+    // //     if (totalReqSize > MAXBUF) {
+    // //         printf("\n!!! Request too big !!!\n");
+    // //         exit(1);
+    // //     }
+    // //     printf("++LOG in loop: %s\n", buf);
+    // //     if (strcmp(buf, "\r\n") == 0) break;
+    // // }
+
+
+
+    // // Check if Request size is too large. Still WIP
+    // // while ((readRet = read(connFd,buf,MAXBUF)) > 0) { // This is obtaining the header to buf
+    // //     //readRet = read(connFd,buf,MAXBUF);
+    // //     totalReqSize += readRet;
+    // //     if (totalReqSize > MAXBUF) {
+    // //         printf("!!! Request Size too Large !!!\n");
+    // //         exit(0);
+    // //     }
+    // //     printf("- %d\n", readRet);
+    // // }
+
+    // // printf("--BUFFER--------------------------------------------------------\n");
+    // // printf("\n%s\n", buf);
+    // // printf("----------------------------------------------------------------\n");
+
+
+    // Request *request = parse(buf,readRet,connFd);
+    // if (request == NULL) { // Check if what is parsed is NULL
+    //     printf("!!! NULL Request !!!\n");
+    //     exit(0);
     // }
-    // int readRet = read(fd_in,buf,MAXBUF);
+    
+
     // //Parse the buffer to the parse function. You will need to pass the socket fd and the buffer would need to
     // //be read from that fd
-    // Request *request = parse(buf,readRet,fd_in);
+    
     // // Store parsed data
+
+    // // if (request)
 
 
     // char method[MAXBUF], uri[MAXBUF], httpVer[MAXBUF];
@@ -161,24 +257,35 @@ void serve_http(int connFd,char *path) {
     // strcpy(uri, request->http_uri);
     // strcpy(httpVer, request->http_version);
 
+    // /////////////////////////// Unchanged here on
 
 
 
-    // 
-	while(read_line(connFd,buf,MAXBUF)>0){
-        // printf("LOG in loop: %s\n", buf);
-        if (strcmp(buf, "\r\n") == 0) break;
-    }
+
+
+
 
     // If its a GET request
     if (strcasecmp(method, "GET") == 0 &&
             uri[0] == '/') {
-        printf("LOG: Sending hello world\n");
+        printf("LOG: GET Request\n");
         respond_get(connFd,path,uri);
     }
+    // else if (strcasecmp(method, "HEAD") == 0 &&
+    //         uri[0] == '/') {
+    //     printf("LOG: HEAD Request\n");
+    //     respond_head(connFd,path,uri);
+    // }
     else {
         printf("LOG: Unknown request\n");
     }
+
+    // free(buf);
+    // free(request->headers); // corrupted size vs. prev_size Aborted (core dumped)
+    // free(request);
+
+
+
     
 }
 
