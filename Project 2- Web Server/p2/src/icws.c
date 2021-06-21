@@ -20,118 +20,109 @@ struct survival_bag{
 	int connFd;
 	char* path;
 };
-void respond_get(int connFd,char *filePath,char *uri) {
+
+
+
+
+
+void respond_GET_HEAD(int connFd, char *filePath, char *uri, int isGet) {
     char buf[MAXBUF];
 	struct stat sb;
 	printf("uri (%s)\n",uri);
     char tmpUri[MAXBUF];
 	strcpy(tmpUri,uri);
 
-    // TODO: Handle extension/ what is theres no ext strrchar
+    // TODO: SHOW MORE HEADER INFORMATION, EG DATE, MODIFIED ON, ETC.
     char *extension = strchr(tmpUri, '.');
     // check if ext is null
+    if (strcmp(extension,"")==0 || extension == NULL) {
+        printf("\n!!! File lacks Extension !!!\n");
+        exit(1);
+    }
 
 	printf("extension = (%s)\n",extension);	
 	char mimeType[MAXBUF];
-	if(strcmp(extension,"html")==0 || strcmp(extension,"htm")==0){ // ori
+	if(strcmp(extension,".html")==0 || strcmp(extension,".htm")==0){ // ori
 		strcpy(	mimeType , "text/html");
 	}
-    else if(strcmp(extension,"css")==0){
+    else if(strcmp(extension,".css")==0){
 		strcpy(	mimeType , "text/css");
 	}
-	else if(strcmp(extension,"txt")==0){ // plain
+	else if(strcmp(extension,".txt")==0){ // plain
 		strcpy(	mimeType , "text/plain");
 	}
-    else if(strcmp(extension,"js")==0){ // javascipt
+    else if(strcmp(extension,".js")==0){ // javascipt
 		strcpy(	mimeType , "text/javascript");
 	}
-	else if(strcmp(extension,"jpg")==0 || strcmp(extension,"jpeg")==0){ // ori
+	else if(strcmp(extension,".jpg")==0 || strcmp(extension,".jpeg")==0){ // ori
 		strcpy(mimeType,"image/jpeg");
 	}
-    else if(strcmp(extension,"png")==0){
+    else if(strcmp(extension,".png")==0){
 		strcpy(	mimeType , "image/png");
 	}
-    else if(strcmp(extension,"gif")==0){
+    else if(strcmp(extension,".gif")==0){
 		strcpy(	mimeType , "image/gif");
 	}
     // support more ext
 
+    // Date
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    printf("Date: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 
-	printf("mimeType (%s)\n",mimeType);
+	printf("mimeType (%s)\n", mimeType);
 	char newBuf[MAXBUF];
 	sprintf(newBuf,"%s%s",filePath,uri);
 	printf("path (%s)\n",newBuf);
     int inputFd = open(newBuf,O_RDONLY);
     fstat(inputFd, &sb);
     size_t sizeOfFile = sb.st_size;
-	printf("%lu\n",sizeOfFile);
+	printf("sizeOfFile: %lu\n",sizeOfFile);
+    printf("Last Modified: %s", ctime(&sb.st_mtime));
+    // printf("Last Modified: %lld\n", (long long) lastMod(NULL));
+
+
+
+    char dateBuf[MAXBUF];
+    time_t now = time(0);
+    struct tm tm2 = *gmtime(&now);
+    strftime(dateBuf, sizeof dateBuf, "%a, %d %b %Y %H:%M:%S %Z", &tm2);
+    printf("Time is: [%s]\n", dateBuf);
+
+// "Date: %s\r\n"
+
+
     sprintf(buf, 
             "HTTP/1.1 200 OK\r\n"
-            "Server: Tiny\r\n"
+            "Server: icws\r\n"
             "Connection: close\r\n"
             "Content-length: %lu\r\n"
             "Content-type: %s\r\n\r\n", sizeOfFile,mimeType);
+
+	printf("buf: \n%s",buf);
+    printf("--HEADER------------------------------------------------------------------\n\n");       
 	char content[MAXBUF];
     write_all(connFd, buf, strlen(buf));
 	ssize_t numRead;
-	printf("buf (%s)\n",buf);
+
     // while (read_line(inputFd, content, MAXBUF) > 0) {
     //     write_all(connFd,content,MAXBUF);
     //     if (strcmp(buf, "\r\n") == 0) break;    
     // }
-    while((numRead = read(inputFd,content,MAXBUF))>0){	
-    	write_all(connFd,content,MAXBUF);
-     }
+
+
+    // for HEAD
+    if (isGet) {
+        while((numRead = read(inputFd,content,MAXBUF))>0){	
+            // printf("[] %s ]", content);
+            write_all(connFd,content,MAXBUF);
+        } 
+    }
 
 	close(inputFd);
 }
 
 
-
-void respond_head(int connFd,char *filePath,char *uri) {
-    char buf[MAXBUF];
-	struct stat sb;
-	printf("uri (%s)\n",uri);
-    char tmpUri[MAXBUF];
-	strcpy(tmpUri,uri);
-    char *extension; strtok(tmpUri,".");
-	extension = strtok(NULL," ");
-	printf("extension (%s)\n",extension);	
-	char mimeType[MAXBUF];
-	if(strcmp(extension,"html")==0){
-		strcpy(	mimeType , "text/html");
-	}
-	else if(strcmp(extension,"jpg")==0){
-		strcpy(mimeType,"image/jpeg");
-	}
-	printf("mimeType (%s)\n",mimeType);
-	char newBuf[MAXBUF];
-	sprintf(newBuf,"%s%s",filePath,uri);
-	printf("path (%s)\n",newBuf);
-    int inputFd = open(newBuf,O_RDONLY);
-    fstat(inputFd, &sb);
-    size_t sizeOfFile = sb.st_size;
-	printf("%lu\n",sizeOfFile);
-    sprintf(buf, 
-            "HTTP/1.1 200 OK\r\n"
-            "Server: Tiny\r\n"
-            "Connection: close\r\n"
-            "Content-length: %lu\r\n"
-            "Content-type: %s\r\n\r\n", sizeOfFile,mimeType);
-	char content[MAXBUF];
-    write_all(connFd, buf, strlen(buf));
-	ssize_t numRead;
-	printf("buf (%s)\n",buf);
-    // while (read_line(inputFd, content, MAXBUF) > 0) {
-    //     write_all(connFd,content,MAXBUF);
-    //     // if (strcmp(buf, "\r\n") == 0) break;    
-    // }
-    // while((numRead = read(inputFd,content,MAXBUF))>0){	
-    // 	write_all(connFd,content,MAXBUF);
-    //  }
-
-	close(inputFd);
-}
 
 
 
@@ -168,7 +159,7 @@ void serve_http(int connFd,char *path) {
         totalReqSize = totalReqSize + readRet;
         if (totalReqSize > MAXBUF) { // Check if request size is too big
             printf("\n!!! Request too big !!!\n");
-            exit(1);
+            exit(400);
         }
         printf("++LOG in loop: %s\n", buf);
         if (strcmp(buf, "\r\n") == 0) break;
@@ -268,16 +259,18 @@ void serve_http(int connFd,char *path) {
     // If its a GET request
     if (strcasecmp(method, "GET") == 0 &&
             uri[0] == '/') {
+        printf("--HEADER------------------------------------------------------------------\n\n");
         printf("LOG: GET Request\n");
-        respond_get(connFd,path,uri);
+        respond_GET_HEAD(connFd,path,uri,99);
     }
-    // else if (strcasecmp(method, "HEAD") == 0 &&
-    //         uri[0] == '/') {
-    //     printf("LOG: HEAD Request\n");
-    //     respond_head(connFd,path,uri);
-    // }
+    else if (strcasecmp(method, "HEAD") == 0 &&
+            uri[0] == '/') {
+        printf("LOG: HEAD Request\n");
+        respond_GET_HEAD(connFd,path,uri,0);
+    }
     else {
         printf("LOG: Unknown request\n");
+        exit(501); // Error 501: Method Not Implemented
     }
 
     // free(buf);
