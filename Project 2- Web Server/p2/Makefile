@@ -18,7 +18,7 @@ default: all
 all : icws 
 
 icws: $(OBJ)
-	$(CC) $^ -o $@
+	$(CC) $^ -pthread -o $@
 
 
 $(SRC_DIR)/lex.yy.c: $(SRC_DIR)/lexer.l

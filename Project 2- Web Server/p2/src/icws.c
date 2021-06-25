@@ -270,6 +270,10 @@ void serve_http(int connFd,char *path) {
     }
     else {
         printf("LOG: Unknown request\n");
+        char bufx[MAXBUF];
+        sprintf(bufx, "LOG: Unknown request\r\n\r\n");
+        // printf("+++++++%s", bufx);
+        write(connFd,bufx,MAXBUF);
         exit(501); // Error 501: Method Not Implemented
     }
 
@@ -282,18 +286,35 @@ void serve_http(int connFd,char *path) {
     
 }
 
-// void* conn_handler(void *args){
-// 	struct survival_bag *context = (struct survival_bag*) args;
-// 	pthread_detach(pthread_self());
-// 	serve_http(context->connFd, context->path);
-// 	close(context->connFd);
-// 	free(context);
-// 	return NULL;	
-// }
+void* conn_handler(void *args){
+	// struct survival_bag *context = (struct survival_bag*) args;
+	// pthread_detach(pthread_self());
+	// serve_http(context->connFd, context->path);
+	// close(context->connFd);
+	// free(context);
+	// return NULL;	
+
+    int context = (int) args; 
+    // printf("Thread-based server A\n");
+    for (;;) {
+        printf(">> %d\n", context);
+        break;
+    }
+    // printf("Thread-based server C\n");
+}
 
 int main(int argc, char* argv[]) {
     // printf("Thread-based server");
     int listenFd = open_listenfd(argv[1]); // Open and listen on port argv[1]
+
+    printf("Starter a\n");
+    int numThread = atoi(argv[3]);
+    pthread_t threadInfo[5];
+    for (int i=0 ; i<numThread ; i++) {
+        pthread_create(&threadInfo[i], NULL, conn_handler, (void *) i);    
+        pthread_detach(threadInfo[i]);           
+    }
+    printf("Ender b\n");
 
     for (;;) {
         struct sockaddr_storage clientAddr;
@@ -311,7 +332,10 @@ int main(int argc, char* argv[]) {
             printf("Connection from %s:%s\n", hostBuf, svcBuf);
         else
             printf("Connection from ?UNKNOWN?\n");
-        //pthread_create(&threadInfo, NULL, conn_handler, (void *) context);        
+        // for (int i=0 ; i<numThread ; i++) {
+        //     //pthread_create(&threadInfo, NULL, conn_handler, (void *) context);             
+        // }
+       
         serve_http(connFd,argv[2]);
         close(connFd);
     }
