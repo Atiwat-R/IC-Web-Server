@@ -286,59 +286,75 @@ void serve_http(int connFd,char *path) {
     
 }
 
-void* conn_handler(void *args){
-	// struct survival_bag *context = (struct survival_bag*) args;
-	// pthread_detach(pthread_self());
-	// serve_http(context->connFd, context->path);
-	// close(context->connFd);
-	// free(context);
-	// return NULL;	
+////// OLD CON HANDLER
+// void* conn_handler(void *args){
+// 	// struct survival_bag *context = (struct survival_bag*) args;
+// 	// pthread_detach(pthread_self());
+// 	// serve_http(context->connFd, context->path);
+// 	// close(context->connFd);
+// 	// free(context);
+// 	// return NULL;	
 
-    int context = (int) args; 
-    // printf("Thread-based server A\n");
-    for (;;) {
-        printf(">> %d\n", context);
-        break;
+//     int context = (int) args; 
+//     // printf("Thread-based server A\n");
+//     printf(">> %d\n", context);
+//     // printf("Thread-based server C\n");
+// }
+
+static char* path;
+
+void* conn_handler(void *args){
+    int listenFd = (int) args;
+    struct sockaddr_storage clientAddr;
+    socklen_t clientLen = sizeof(struct sockaddr_storage);
+    // pthread_t threadInfo;
+    int connFd = accept(listenFd, (SA *) &clientAddr, &clientLen);
+    // printf("connFd (%d)\n",connFd);
+    if (connFd < 0) { 
+        fprintf(stderr, "Failed to accept\n"); return; 
     }
-    // printf("Thread-based server C\n");
+
+    // struct survival_bag *context = (struct survival_bag *) malloc(sizeof(struct survival_bag));
+    // context->connFd = connFd;
+    // context->path = argv[2];
+    char hostBuf[MAXBUF], svcBuf[MAXBUF];
+    if (getnameinfo((SA *) &clientAddr, clientLen, 
+                    hostBuf, MAXBUF, svcBuf, MAXBUF, 0)==0) 
+        printf("Connection from %s:%s\n", hostBuf, svcBuf);
+    else
+        printf("Connection from ?UNKNOWN?\n");
+    // for (int i=0 ; i<numThread ; i++) {
+    //     //pthread_create(&threadInfo, NULL, conn_handler, (void *) context);             
+    // }
+    
+    serve_http(connFd,path);
+    close(connFd);
 }
+
+static int counting = 0;
 
 int main(int argc, char* argv[]) {
     // printf("Thread-based server");
-    int listenFd = open_listenfd(argv[1]); // Open and listen on port argv[1]
+    int listenFd = open_listenfd(argv[1]); // Open and listen on port argv[1]. The web page on this port "request" for icws' sample-www 
+    path = argv[2];
 
     printf("Starter a\n");
     int numThread = atoi(argv[3]);
     pthread_t threadInfo[5];
-    for (int i=0 ; i<numThread ; i++) {
-        pthread_create(&threadInfo[i], NULL, conn_handler, (void *) i);    
-        pthread_detach(threadInfo[i]);           
+    
+
+    for (;;) { 
+        for (int i=0 ; i<numThread ; i++) {
+            pthread_create(&threadInfo[i], NULL, conn_handler, (void *) listenFd);    
+            pthread_detach(threadInfo[i]);   
+            // counting++;
+            // printf("\nCOUNTING: %d\n", counting);        
+        }        
+
     }
+
     printf("Ender b\n");
 
-    for (;;) {
-        struct sockaddr_storage clientAddr;
-        socklen_t clientLen = sizeof(struct sockaddr_storage);
-	    // pthread_t threadInfo;
-        int connFd = accept(listenFd, (SA *) &clientAddr, &clientLen);
-        // printf("connFd (%d)\n",connFd);
-        if (connFd < 0) { fprintf(stderr, "Failed to accept\n"); continue; }
-        // struct survival_bag *context = (struct survival_bag *) malloc(sizeof(struct survival_bag));
-        // context->connFd = connFd;
-        // context->path = argv[2];
-        char hostBuf[MAXBUF], svcBuf[MAXBUF];
-        if (getnameinfo((SA *) &clientAddr, clientLen, 
-                        hostBuf, MAXBUF, svcBuf, MAXBUF, 0)==0) 
-            printf("Connection from %s:%s\n", hostBuf, svcBuf);
-        else
-            printf("Connection from ?UNKNOWN?\n");
-        // for (int i=0 ; i<numThread ; i++) {
-        //     //pthread_create(&threadInfo, NULL, conn_handler, (void *) context);             
-        // }
-       
-        serve_http(connFd,argv[2]);
-        close(connFd);
-    }
 
     return 0;
 }
