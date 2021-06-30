@@ -304,31 +304,13 @@ void serve_http(int connFd,char *path) {
 static char* path;
 
 void* conn_handler(void *args){
-    int listenFd = (int) args;
-    struct sockaddr_storage clientAddr;
-    socklen_t clientLen = sizeof(struct sockaddr_storage);
-    // pthread_t threadInfo;
-    int connFd = accept(listenFd, (SA *) &clientAddr, &clientLen);
-    // printf("connFd (%d)\n",connFd);
-    if (connFd < 0) { 
-        fprintf(stderr, "Failed to accept\n"); return; 
-    }
 
-    // struct survival_bag *context = (struct survival_bag *) malloc(sizeof(struct survival_bag));
-    // context->connFd = connFd;
-    // context->path = argv[2];
-    char hostBuf[MAXBUF], svcBuf[MAXBUF];
-    if (getnameinfo((SA *) &clientAddr, clientLen, 
-                    hostBuf, MAXBUF, svcBuf, MAXBUF, 0)==0) 
-        printf("Connection from %s:%s\n", hostBuf, svcBuf);
-    else
-        printf("Connection from ?UNKNOWN?\n");
-    // for (int i=0 ; i<numThread ; i++) {
-    //     //pthread_create(&threadInfo, NULL, conn_handler, (void *) context);             
-    // }
+    struct survival_bag *context = (struct survival_bag *) args;
+    pthread_detach(pthread_self());
     
-    serve_http(connFd,path);
-    close(connFd);
+    serve_http(context->connFd, context->path);
+    close(context->connFd);
+    close(context);
 }
 
 static int counting = 0;
@@ -336,25 +318,53 @@ static int counting = 0;
 int main(int argc, char* argv[]) {
     // printf("Thread-based server");
     int listenFd = open_listenfd(argv[1]); // Open and listen on port argv[1]. The web page on this port "request" for icws' sample-www 
-    path = argv[2];
+    // path = argv[2];
 
-    printf("Starter a\n");
+    printf("Start a\n");
     int numThread = atoi(argv[3]);
-    pthread_t threadInfo[5];
+    pthread_t threadInfo[numThread];
+
+    // -------------------------------
     
+    // Struct for storing relevant data, passed into each thread
+    // struct survival_bag *context  = (struct survival_bag *) malloc(sizeof(struct survival_bag));
 
-    for (;;) { 
-        for (int i=0 ; i<numThread ; i++) {
-            pthread_create(&threadInfo[i], NULL, conn_handler, (void *) listenFd);    
-            pthread_detach(threadInfo[i]);   
-            // counting++;
-            // printf("\nCOUNTING: %d\n", counting);        
-        }        
+    struct sockaddr_storage clientAddr;
+    socklen_t clientLen = sizeof(struct sockaddr_storage);
+    //pthread_t threadInfo;
 
+
+
+    // for (int i=0 ; i<numThread ; i++) {
+    //     pthread_create(&threadInfo[i], NULL, conn_handler, (void *) context);    
+    //     //pthread_detach(threadInfo[i]);   
+    // }   
+    for (int i=0 ; i<numThread ; i++) {  // for(;;) repeats til all data is send. // Gotta reuse threads
+
+        // Establish connection
+        int connFd = accept(listenFd, (SA *) &clientAddr, &clientLen);
+        // printf("connFd (%d)\n",connFd);
+        if (connFd < 0) { 
+            fprintf(stderr, "Failed to accept\n"); return; 
+        }
+
+        // Making struct to be passed into threads
+        struct survival_bag *context = (struct survival_bag *) malloc(sizeof(struct survival_bag));
+        context->connFd = connFd;
+        context->path = argv[2];
+        memcpy(&context->clientAddr, &clientAddr, sizeof(struct sockaddr_storage));
+
+        char hostBuf[MAXBUF], svcBuf[MAXBUF];
+        if (getnameinfo((SA *) &clientAddr, clientLen, 
+                        hostBuf, MAXBUF, svcBuf, MAXBUF, 0)==0) 
+            printf("Connection from %s:%s\n", hostBuf, svcBuf);
+        else
+            printf("Connection from ?UNKNOWN?\n");
+
+        pthread_create(&threadInfo[i], NULL, conn_handler, (void *) context);
     }
 
-    printf("Ender b\n");
-
+    printf("End b\n");
 
     return 0;
 }
