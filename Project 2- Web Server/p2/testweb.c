@@ -36,7 +36,7 @@ int sock =0;
 int max_threads =0;
 int global_count=0;
 int finished =1;
-int length=0;
+int length=0; // number of queue
 
 /*Queue*/
 struct node{
@@ -198,7 +198,7 @@ int main(int argc, char** argv){
 
 
         addr_size = sizeof(client_addr);
-        socket_of_accept = accept(servfd, (struct sockaddr *) &client_addr, &addr_size);
+        socket_of_accept = accept(servfd, (struct sockaddr *) &client_addr, &addr_size); // connFd
         if (socket_of_accept == -1) {
             printf("Error: Accept has been failed\n");
             perror ("Accept: ");
@@ -210,9 +210,9 @@ int main(int argc, char** argv){
         if (length <= requests){
 
             /*recieve message*/
-            r_len = recv(socket_of_accept, buf, KB,0);
+            r_len = recv(socket_of_accept, buf, KB,0); // basically read()
             if (r_len == -1){
-                printf("Error: recieve has been  %d\n", socket_of_accept);
+                printf("Error: receive has been  %d\n", socket_of_accept);
                 close(socket_of_accept);
                 exit(1);
             }
