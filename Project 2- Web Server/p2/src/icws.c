@@ -290,9 +290,8 @@ void tpool_wait(tpool_t *tm)
 
 #include <sys/poll.h>
 
-#define TIMEOUT_SEC 10 // to use as an argument, *1000 so it'd become milisec
-
 struct pollfd fds[2]; 
+int timeout_sec; // to use as an argument, *1000 so it'd become milisec
 int ret;
 
 
@@ -606,7 +605,7 @@ void* conn_handler(void *args){
 
 
 
-// run -> ./icws 222 src/sample-www/ 10
+// run -> ./icws 222 src/sample-www/ 10 5
 
 int main(int argc, char* argv[]) {
 
@@ -619,6 +618,13 @@ int main(int argc, char* argv[]) {
     fds[0].events = POLLIN;
 
     printf("Starting...\n");
+
+    // Timeouts
+    if (argv[4] != NULL) {
+        timeout_sec = atoi(argv[4]);
+    } else {
+        timeout_sec = 5; // If no specified timeout is given, 5 will be the default
+    }
 
     // Number of threads
     int numThread;
@@ -640,7 +646,7 @@ int main(int argc, char* argv[]) {
     for (;;) { //  for (int i=0 ; i<numThread ; i++)    // for(;;) repeats til all data is send. // Gotta reuse threads
 
         // Check for connection timeouts 
-        ret = poll(fds, 2, TIMEOUT_SEC * 1000);
+        ret = poll(fds, 2, timeout_sec * 1000);
         if (ret <= 0) {
             printf("\nRequest Timeout\n");
             exit(408); // Exit code 408 for Request Timeout
