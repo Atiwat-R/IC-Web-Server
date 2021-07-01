@@ -285,7 +285,15 @@ void tpool_wait(tpool_t *tm)
 
 
 
+// ----------------------------------------------------------------------------------------------
+// Poll to hadle connection timeout
 
+#include <sys/poll.h>
+
+#define TIMEOUT_SEC 10 // to use as an argument, *1000 so it'd become milisec
+
+struct pollfd fds[2]; 
+int ret;
 
 
 
@@ -584,7 +592,6 @@ void serve_http(int connFd,char *path) {
 //     // printf("Thread-based server C\n");
 // }
 
-static char* path;
 
 void* conn_handler(void *args){
 
@@ -596,17 +603,20 @@ void* conn_handler(void *args){
     close(context);
 }
 
-static int counting = 0;
 
 
-// ./icws 222 src/sample-www/ 10
+
+// run -> ./icws 222 src/sample-www/ 10
+
 int main(int argc, char* argv[]) {
-    // printf("Thread-based server");
+
     int listenFd = open_listenfd(argv[1]); // Open and listen on port argv[1]. The web page on this port "request" for icws' sample-www 
     if (listenFd < 0) { // open_listenfd error checking
         printf("Error Listening on the port.\n");
         printf("Error %d", errno);
     }
+    fds[0].fd = listenFd; // Put listenFd into poll struct
+    fds[0].events = POLLIN;
 
     printf("Starting...\n");
 
@@ -625,9 +635,16 @@ int main(int argc, char* argv[]) {
     // Some data for creating struct context
     struct sockaddr_storage clientAddr;
     socklen_t clientLen = sizeof(struct sockaddr_storage);
-    
+
 
     for (;;) { //  for (int i=0 ; i<numThread ; i++)    // for(;;) repeats til all data is send. // Gotta reuse threads
+
+        // Check for connection timeouts 
+        ret = poll(fds, 2, TIMEOUT_SEC * 1000);
+        if (ret <= 0) {
+            printf("\nRequest Timeout\n");
+            exit(408); // Exit code 408 for Request Timeout
+        }
 
         // Establish connection
         int connFd = accept(listenFd, (SA *) &clientAddr, &clientLen);
@@ -651,9 +668,53 @@ int main(int argc, char* argv[]) {
         // Add work to queue
         tpool_add_work(tm, conn_handler, (void *) context);
         //pthread_create(&threadInfo, NULL, conn_handler, (void *) context); // pthread_create(&threadInfo[i], NULL, conn_handler, (void *) context);
-    }
+    }        
+    
 
-    printf("Ending...\n");
+
+
+
+
+
+
+
+
+    // // More poll stuff
+    // ret = poll(fds, 2, timeout_seconds * 1000);
+
+    // if (ret > 0) {
+    //     for (;;) { //  for (int i=0 ; i<numThread ; i++)    // for(;;) repeats til all data is send. // Gotta reuse threads
+
+    //         // Establish connection
+    //         int connFd = accept(listenFd, (SA *) &clientAddr, &clientLen);
+    //         if (connFd < 0) { 
+    //             fprintf(stderr, "Failed to accept\n"); return; 
+    //         }
+
+    //         // Making struct to be passed into threads
+    //         struct survival_bag *context = (struct survival_bag *) malloc(sizeof(struct survival_bag));
+    //         context->connFd = connFd;
+    //         context->path = argv[2];
+    //         memcpy(&context->clientAddr, &clientAddr, sizeof(struct sockaddr_storage));
+
+    //         char hostBuf[MAXBUF], svcBuf[MAXBUF];
+    //         if (getnameinfo((SA *) &clientAddr, clientLen, 
+    //                         hostBuf, MAXBUF, svcBuf, MAXBUF, 0)==0) 
+    //             printf("Connection from %s:%s\n", hostBuf, svcBuf);
+    //         else
+    //             printf("Connection from ?UNKNOWN?\n");
+
+    //         // Add work to queue
+    //         tpool_add_work(tm, conn_handler, (void *) context);
+    //         //pthread_create(&threadInfo, NULL, conn_handler, (void *) context); // pthread_create(&threadInfo[i], NULL, conn_handler, (void *) context);
+    //     }        
+    // }
+    // else {
+    //     printf("\n408 Request Timeout\n");
+    //     exit(408);
+    // }
+
+
 
     return 0;
 }
