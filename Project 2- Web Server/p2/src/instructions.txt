@@ -1,3 +1,7 @@
+-For my own self-reminder
+
+>>> For testing file in src
+
 To compile, use
 $ make
 
@@ -8,3 +12,25 @@ then open in chrome either
 http://192.168.56.1:222/index.html
 or
 http://localhost:222/index.html
+
+
+
+*********************************
+
+
+>>> For IC Web Server in p2
+
+> make all
+to compile
+
+> ./icws <port> <folder> <numThreads> <timeout_sec>
+to run
+
+e.g.
+> ./icws 222 ./src/sample-www 10 5
+
+- port 222
+- 10 threads
+- 5 second timeout
+
+
